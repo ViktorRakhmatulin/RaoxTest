@@ -17,7 +17,7 @@ import org.eclipse.jface.dialogs.IDialogConstants;
 import org.eclipse.jface.layout.TableColumnLayout;
 import org.eclipse.jface.resource.FontRegistry;
 import org.eclipse.jface.resource.ImageDescriptor;
-import org.eclipse.jface.viewers.ColumnWeightData;
+import org.eclipse.jface.viewers.ColumnPixelData;
 import org.eclipse.jface.viewers.DoubleClickEvent;
 import org.eclipse.jface.viewers.IColorProvider;
 import org.eclipse.jface.viewers.IDoubleClickListener;
@@ -33,6 +33,8 @@ import org.eclipse.swt.SWT;
 import org.eclipse.swt.dnd.Clipboard;
 import org.eclipse.swt.dnd.TextTransfer;
 import org.eclipse.swt.dnd.Transfer;
+import org.eclipse.swt.events.ControlEvent;
+import org.eclipse.swt.events.ControlListener;
 import org.eclipse.swt.events.KeyEvent;
 import org.eclipse.swt.events.KeyListener;
 import org.eclipse.swt.events.SelectionAdapter;
@@ -50,6 +52,7 @@ import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.MenuItem;
 import org.eclipse.swt.widgets.Shell;
+import org.eclipse.swt.widgets.TableColumn;
 import org.eclipse.swt.widgets.Text;
 import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.part.ViewPart;
@@ -60,9 +63,9 @@ import ru.bmstu.rk9.rao.lib.database.Database.EntryType;
 import ru.bmstu.rk9.rao.lib.database.Database.TypeSize;
 import ru.bmstu.rk9.rao.lib.notification.Subscriber;
 import ru.bmstu.rk9.rao.lib.simulator.CurrentSimulator;
-import ru.bmstu.rk9.rao.lib.simulator.SimulatorSubscriberManager;
 import ru.bmstu.rk9.rao.lib.simulator.CurrentSimulator.ExecutionState;
 import ru.bmstu.rk9.rao.lib.simulator.CurrentSimulator.SimulatorState;
+import ru.bmstu.rk9.rao.lib.simulator.SimulatorSubscriberManager;
 import ru.bmstu.rk9.rao.lib.simulator.SimulatorSubscriberManager.SimulatorSubscriberInfo;
 import ru.bmstu.rk9.rao.ui.gef.process.ProcessColors;
 import ru.bmstu.rk9.rao.ui.graph.GraphControl;
@@ -119,14 +122,29 @@ public class TraceView extends ViewPart {
 		return new FrameInfo(searchNumber, dptName);
 	}
 
+	public TableViewerColumn column = null;
+
 	@Override
 	public void createPartControl(Composite parent) {
 		viewer = new TableViewer(parent, SWT.H_SCROLL | SWT.V_SCROLL | SWT.VIRTUAL);
+		viewer.getTable().addControlListener(new ControlListener() {
 
-		TableViewerColumn column = new TableViewerColumn(viewer, SWT.NONE);
+			@Override
+			public void controlResized(ControlEvent e) {
+				// TODO Auto-generated method stub
+				column.getColumn().pack();
+			}
+
+			@Override
+			public void controlMoved(ControlEvent e) {
+				// TODO Auto-generated method stub
+
+			}
+		});
+		column = new TableViewerColumn(viewer, SWT.H_SCROLL | SWT.V_SCROLL);
 		TableColumnLayout tableLayout = new TableColumnLayout();
 		parent.setLayout(tableLayout);
-		tableLayout.setColumnData(column.getColumn(), new ColumnWeightData(100, ColumnWeightData.MINIMUM_WIDTH));
+		tableLayout.setColumnData(column.getColumn(), new ColumnPixelData(100, true));
 
 		FontRegistry fontRegistry = PlatformUI.getWorkbench().getThemeManager().getCurrentTheme().getFontRegistry();
 
@@ -166,7 +184,7 @@ public class TraceView extends ViewPart {
 			}
 		});
 
-		viewer.setContentProvider(new TraceViewContentProvider());
+		viewer.setContentProvider(new TraceViewContentProvider(column.getColumn()));
 		viewer.setLabelProvider(new TraceViewLabelProvider());
 		viewer.setUseHashlookup(true);
 		viewer.getTable().setFont(fontRegistry.get(PreferenceConstants.EDITOR_TEXT_FONT));
@@ -382,7 +400,7 @@ public class TraceView extends ViewPart {
 		return shouldFollowOutput;
 	}
 
-	public static final Runnable realTimeUpdateRunnable = new Runnable() {
+	public final Runnable realTimeUpdateRunnable = new Runnable() {
 		@Override
 		public void run() {
 			if (!readyForInput())
@@ -393,6 +411,7 @@ public class TraceView extends ViewPart {
 			TraceView.viewer.setItemCount(size);
 			if (TraceView.shouldFollowOutput())
 				TraceView.viewer.getTable().setTopIndex(size - 1);
+			column.getColumn().pack();
 		}
 	};
 
@@ -441,6 +460,13 @@ public class TraceView extends ViewPart {
 // ――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――― //
 
 class TraceViewContentProvider implements ILazyContentProvider {
+
+	final TableColumn column;
+
+	TraceViewContentProvider(TableColumn column) {
+		this.column = column;
+	}
+
 	private List<Entry> allEntries;
 
 	@Override
@@ -451,6 +477,8 @@ class TraceViewContentProvider implements ILazyContentProvider {
 	@Override
 	public void inputChanged(Viewer viewer, Object oldInput, Object newInput) {
 		allEntries = (List<Entry>) newInput;
+
+		column.pack();
 	}
 
 	@Override

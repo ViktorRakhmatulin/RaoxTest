@@ -547,6 +547,8 @@
            </command>
            <command
                  commandId="ru.bmstu.rk9.rao.ui.runtime.stop"
+                 disabledIcon="icons/rao_stop.gif"
+                 hoverIcon="icons/rao_plus.gif"
                  icon="icons/rao_stop.gif"
                  id="ru.bmstu.rk9.rao.ui.runtime.menu.stop"
                  label="Stop"
